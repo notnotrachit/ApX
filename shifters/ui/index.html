@@ -514,17 +514,25 @@
         // Connect to WebSocket
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            console.log('🔌 Connecting to WebSocket:', wsUrl);
+            ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {
-                console.log('Connected to F1 Simulator');
+                console.log('✅ WebSocket Connected to F1 Simulator');
                 document.getElementById('connectionStatus').className = 'connection-status connected';
                 document.getElementById('connectionStatus').textContent = '🟢 Connected';
             };
 
             ws.onmessage = (event) => {
-                currentState = JSON.parse(event.data);
-                updateUI(currentState);
+                console.log('📨 WebSocket message received, length:', event.data.length);
+                try {
+                    currentState = JSON.parse(event.data);
+                    console.log('📦 Parsed state:', currentState);
+                    updateUI(currentState);
+                } catch (e) {
+                    console.error('❌ Failed to parse WebSocket message:', e, 'Data:', event.data);
+                }
             };
 
             ws.onclose = () => {
@@ -541,7 +549,12 @@
 
         // Update UI with state
         function updateUI(state) {
-            if (!state || state.status === 'not_initialized') return;
+            console.log('Received state:', state);
+            
+            if (!state || state.status === 'not_initialized') {
+                console.log('State not initialized, skipping update');
+                return;
+            }
 
             // Update stats
             if (state.track) {
@@ -564,6 +577,7 @@
             }
 
             // Draw track
+            console.log('Calling drawTrack with state.track:', state.track);
             drawTrack(state);
 
             // Update button states
@@ -649,29 +663,48 @@
 
         // Draw track
         function drawTrack(state) {
+            console.log('🎨 drawTrack called');
+            console.log('  - Canvas dimensions:', canvas.width, 'x', canvas.height);
+            console.log('  - State:', state);
+            console.log('  - state.track:', state.track);
+            
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            if (!state.track || !state.agents) return;
+            // Require valid track data, but allow rendering even if there are no agents yet
+            if (!state.track) {
+                console.log('❌ No track data, skipping draw');
+                return;
+            }
 
             const track = state.track;
+            console.log('  - track.has_geojson:', track.has_geojson);
+            console.log('  - track.geojson:', track.geojson);
 
             // Draw track layout
             if (track.has_geojson && track.geojson && track.geojson.points) {
+                console.log('🗺️ Drawing GeoJSON track, points:', track.geojson.points.length);
                 drawTrackFromGeoJSON(track.geojson);
             } else {
+                console.log('⭕ Drawing simple circular track');
                 // Draw simple circular track
                 const centerX = canvas.width / 2;
                 const centerY = canvas.height / 2;
                 const radius = Math.min(canvas.width, canvas.height) / 2 - 50;
 
+                console.log('  - Center:', centerX, centerY, 'Radius:', radius);
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
                 ctx.lineWidth = 20;
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
                 ctx.stroke();
+                console.log('✅ Circular track drawn');
             }
 
-            // Draw cars
+            // Draw cars if we have agent data
+            if (!state.agents || state.agents.length === 0) {
+                return;
+            }
+
             state.agents.forEach((agent, index) => {
                 if (agent.x && agent.y) {
                     // Use GeoJSON position
@@ -688,7 +721,6 @@
 
                     const x = centerX + radius * Math.cos(angle - Math.PI / 2);
                     const y = centerY + radius * Math.sin(angle - Math.PI / 2);
-
                     drawCar(x, y, agent.team_color || '#FF0000', agent.drs_active);
                 }
             });
@@ -696,8 +728,13 @@
 
         // Draw track from GeoJSON
         function drawTrackFromGeoJSON(geojson) {
+            console.log('🗺️ drawTrackFromGeoJSON called');
             const points = geojson.points;
-            if (!points || points.length < 2) return;
+            console.log('  - Points:', points ? points.length : 'null');
+            if (!points || points.length < 2) {
+                console.log('❌ Not enough points to draw');
+                return;
+            }
 
             // Draw track line
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
@@ -772,6 +809,8 @@
                 enable_safety_car: document.getElementById('enableSafetyCar').checked
             };
 
+            console.log('🏗️ Creating race with config:', config);
+
             const response = await fetch('/api/simulation/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -779,19 +818,27 @@
             });
 
             const result = await response.json();
+            console.log('📥 Create race response:', result);
             if (result.status === 'success') {
                 document.getElementById('createBtn').disabled = true;
                 document.getElementById('startBtn').disabled = false;
-                console.log('Race created successfully');
+                console.log('✅ Race created successfully');
+            } else {
+                console.error('❌ Failed to create race:', result);
             }
         }
 
         async function startRace() {
+            console.log('▶️ Starting race...');
             const response = await fetch('/api/simulation/start', { method: 'POST' });
             const result = await response.json();
+            console.log('📥 Start race response:', result);
             if (result.status === 'success') {
                 document.getElementById('startBtn').disabled = true;
                 document.getElementById('stopBtn').disabled = false;
+                console.log('✅ Race started successfully');
+            } else {
+                console.error('❌ Failed to start race:', result);
             }
         }
 

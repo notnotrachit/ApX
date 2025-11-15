@@ -194,6 +194,14 @@ class MobilitySimulation(Model):
         self.trigger_event("race_finish")
         print(f"🏆 Race finished! Total time: {self.simulation_time:.2f}s")
 
+    def is_race_complete(self) -> bool:
+        """Return True when the race has finished.
+
+        This is used by the WebSocket UI server to know when to stop
+        broadcasting live updates.
+        """
+        return self.race_finished
+
     def run(self, max_steps: Optional[int] = None, verbose: bool = True):
         """
         Run the simulation.

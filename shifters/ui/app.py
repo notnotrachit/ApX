@@ -185,17 +185,21 @@ def get_simulation_state() -> Dict[str, Any]:
 
     # Get leaderboard
     rankings = simulation.leaderboard.get_rankings()
-    leaderboard = [
-        {
-            "position": rank.position,
-            "driver_id": rank.agent.unique_id,
-            "driver_name": rank.agent.name,
-            "team_name": rank.agent.team_name,
-            "gap_to_leader": rank.gap_to_leader,
-            "total_time": rank.total_time,
-        }
-        for rank in rankings
-    ]
+    
+    # Calculate gaps to leader
+    leader_time = rankings[0]["time"] if rankings else 0
+    leaderboard = []
+    for rank in rankings:
+        # Find the agent object to get team info
+        agent = next((a for a in agents if a.unique_id == rank["id"]), None)
+        leaderboard.append({
+            "position": rank["rank"],
+            "driver_id": rank["id"],
+            "driver_name": rank["name"],
+            "team_name": agent.team_name if agent and hasattr(agent, 'team_name') else "Unknown",
+            "gap_to_leader": rank["time"] - leader_time if rank["rank"] > 1 else 0.0,
+            "total_time": rank["time"],
+        })
 
     state = {
         "status": "running" if simulation_running else "paused",
@@ -221,6 +225,8 @@ def get_simulation_state() -> Dict[str, Any]:
 async def simulation_loop():
     """Main simulation loop that broadcasts updates."""
     global simulation_running
+    
+    print("🔄 Simulation loop started")
 
     while simulation_running:
         if simulation and not simulation.is_race_complete():
@@ -240,7 +246,7 @@ async def simulation_loop():
                 if isinstance(agent, F1Vehicle) and hasattr(agent, 'ai_strategy'):
                     # Get position in race
                     rankings = simulation.leaderboard.get_rankings()
-                    position = next((r.position for r in rankings if r.agent.unique_id == agent.unique_id), 999)
+                    position = next((r["rank"] for r in rankings if r["id"] == agent.unique_id), 999)
 
                     # AI decides whether to pit
                     should_pit, reason = agent.ai_strategy.should_pit(
@@ -313,8 +319,18 @@ async def create_simulation_endpoint(config: Dict[str, Any]):
     """Create a new simulation."""
     try:
         create_simulation(config)
+        print(f"✅ Simulation created with {len(list(simulation.agent_set))} agents")
+        
+        # Broadcast initial state immediately
+        initial_state = get_simulation_state()
+        await manager.broadcast(initial_state)
+        print(f"📡 Broadcasted initial state: track={initial_state.get('track', {}).get('name')}, agents={len(initial_state.get('agents', []))}")
+        
         return {"status": "success", "message": "Simulation created"}
     except Exception as e:
+        print(f"❌ Error creating simulation: {e}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
 

@@ -108,6 +108,9 @@ class GeoJSONTrackParser:
 
         # Calculate sector boundaries (divide track into 3 equal sectors)
         self._assign_sectors()
+        
+        # Calculate corner types based on curvature
+        self._calculate_corner_types()
 
     def _parse_track_geometry(self, feature: Dict[str, Any]) -> None:
         """Parse track geometry from a GeoJSON feature."""
@@ -425,3 +428,58 @@ class GeoJSONTrackParser:
             ],
             'bounds': self.get_track_bounds()
         }
+    
+    def _calculate_corner_types(self) -> None:
+        """Calculate corner types based on track curvature."""
+        if len(self.track_points) < 5:
+            return
+        
+        # Use a sliding window to calculate curvature
+        window_size = 5
+        
+        for i in range(len(self.track_points)):
+            # Get points in window around current point
+            start_idx = max(0, i - window_size // 2)
+            end_idx = min(len(self.track_points), i + window_size // 2 + 1)
+            
+            if end_idx - start_idx < 3:
+                self.track_points[i].corner_type = 'straight'
+                continue
+            
+            # Calculate angle change over the window
+            angles = []
+            for j in range(start_idx, end_idx - 1):
+                p1 = self.track_points[j]
+                p2 = self.track_points[j + 1]
+                
+                # Calculate angle using normalized coordinates
+                dx = p2.x - p1.x
+                dy = p2.y - p1.y
+                angle = math.atan2(dy, dx)
+                angles.append(angle)
+            
+            # Calculate total angle change
+            if len(angles) < 2:
+                self.track_points[i].corner_type = 'straight'
+                continue
+            
+            total_angle_change = 0.0
+            for j in range(len(angles) - 1):
+                # Normalize angle difference to [-pi, pi]
+                diff = angles[j + 1] - angles[j]
+                while diff > math.pi:
+                    diff -= 2 * math.pi
+                while diff < -math.pi:
+                    diff += 2 * math.pi
+                total_angle_change += abs(diff)
+            
+            # Classify based on total angle change
+            # These thresholds are tuned for F1 tracks
+            if total_angle_change < 0.15:
+                self.track_points[i].corner_type = 'straight'
+            elif total_angle_change < 0.5:
+                self.track_points[i].corner_type = 'fast'
+            elif total_angle_change < 1.0:
+                self.track_points[i].corner_type = 'medium'
+            else:
+                self.track_points[i].corner_type = 'slow'

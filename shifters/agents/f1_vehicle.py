@@ -92,6 +92,7 @@ class F1Vehicle(RacingVehicle):
         self.current_grip = 1.0
         self.car_weight_kg = 798.0  # Minimum car weight (without fuel)
         self.downforce_level = 1.0  # Aerodynamic downforce
+        self.effective_max_speed = self.max_speed  # Initialize effective max speed
 
         # Strategy
         self.pit_stop_duration = 2.5  # seconds
@@ -241,14 +242,26 @@ class F1Vehicle(RacingVehicle):
             self.effective_max_speed += 10.0  # ~10 km/h from ERS
 
     def _accelerate(self):
-        """Accelerate considering tire grip and car performance."""
-        if self.speed < self.effective_max_speed:
+        """Accelerate considering tire grip, car performance, and cornering."""
+        # Get corner speed limit based on track curvature
+        corner_speed_limit = self._get_corner_speed_limit()
+        
+        # Target speed is the minimum of effective max speed and corner limit
+        target_speed = min(self.effective_max_speed, corner_speed_limit)
+        
+        if self.speed < target_speed:
             # Acceleration affected by tire grip
             effective_acceleration = self.acceleration * self.current_grip
-
             self.speed = min(
                 self.speed + effective_acceleration * self.model.time_step,
-                self.effective_max_speed
+                target_speed
+            )
+        elif self.speed > target_speed:
+            # Brake for corners
+            braking_force = 35.0  # F1 cars have very strong brakes
+            self.speed = max(
+                self.speed - braking_force * self.model.time_step,
+                target_speed
             )
 
     def pit_stop(self, new_compound: Optional[TireCompound] = None):
@@ -276,6 +289,44 @@ class F1Vehicle(RacingVehicle):
 
         # Reset ERS
         self.ers_energy_mj = self.ers_max_mj
+    
+    def _get_corner_speed_limit(self) -> float:
+        """Calculate speed limit based on current track position and corner type."""
+        track = self.model.environment.track
+        
+        # Get track point at current position
+        if not hasattr(track, 'geojson_parser') or not track.geojson_parser:
+            return self.effective_max_speed  # No corner data, no limit
+        
+        parser = track.geojson_parser
+        if not parser.track_points:
+            return self.effective_max_speed
+        
+        # Find nearest track point
+        total_distance = track.length
+        current_distance = (self.position / 100.0) * total_distance
+        
+        # Find closest point
+        closest_point = min(parser.track_points, 
+                          key=lambda p: abs(p.distance - current_distance))
+        
+        # Apply speed limits based on corner type
+        # Note: corner_type can be None, 'straight', 'slow', 'medium', 'fast'
+        if not closest_point.corner_type or closest_point.corner_type == 'straight':
+            # Straight: full speed, no limit
+            return self.effective_max_speed
+        elif closest_point.corner_type == 'fast':
+            # Fast corners (sweeping turns): 250-280 km/h
+            return 265.0 * self.current_grip
+        elif closest_point.corner_type == 'medium':
+            # Medium corners: 150-200 km/h
+            return 175.0 * self.current_grip
+        elif closest_point.corner_type == 'slow':
+            # Slow corners (hairpins, tight chicanes): 80-120 km/h
+            return 100.0 * self.current_grip
+        else:
+            # Default: no limit
+            return self.effective_max_speed
 
     def exit_pit_lane(self):
         """Exit pit lane and return to track."""
