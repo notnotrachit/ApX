@@ -26,20 +26,23 @@ def main():
     print("  ✓ ERS (Energy Recovery System)")
     print("  ✓ DRS (Drag Reduction System)")
     print("  ✓ Sector timing")
-    print("  ✓ F1-style timing tower")
-    print("  ✓ Live telemetry dashboard")
+    print("  ✓ Dynamic weather system")
+    print("  ✓ Safety car (VSC & Full SC)")
+    print("  ✓ AI strategy engine")
+    print("  ✓ Damage system")
+    print("  ✓ Real-time telemetry")
     print()
     print("=" * 60)
     print()
-    print("🌐 Opening in your browser...")
+    print("🌐 Server starting on http://localhost:8765")
+    print("📱 Open http://localhost:8765 in your browser")
     print()
 
-    # Import and run the Solara app
-    from shifters.ui import f1_simulator_ui
+    # Run the FastAPI app
+    import uvicorn
+    from shifters.ui.app import app
 
-    # Run with solara
-    import solara.server.starlette
-    solara.server.starlette.run(f1_simulator_ui.Page, port=8765)
+    uvicorn.run(app, host="0.0.0.0", port=8765, log_level="info")
 
 
 if __name__ == "__main__":

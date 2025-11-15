@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏎️ F1 Simulator - Production Ready</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #FF1E00 0%, #DC0000 100%);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(255, 30, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 300px 1fr 400px;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #FF1E00;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-size: 12px;
+            text-transform: uppercase;
+            opacity: 0.7;
+            letter-spacing: 1px;
+        }
+
+        select, input[type="number"], input[type="range"] {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .slider-value {
+            text-align: right;
+            font-size: 18px;
+            font-weight: bold;
+            color: #FF1E00;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00D2BE 0%, #00A896 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 210, 190, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #FF1E00 0%, #DC0000 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 30, 0, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Track Canvas */
+        #trackCanvas {
+            width: 100%;
+            height: 600px;
+            background: #1a1a1a;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Timing Tower */
+        .timing-tower {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .timing-row {
+            display: grid;
+            grid-template-columns: 40px 1fr 80px 80px;
+            gap: 10px;
+            padding: 12px;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            border-left: 4px solid;
+            transition: all 0.2s;
+        }
+
+        .timing-row:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(4px);
+        }
+
+        .position {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .driver-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .driver-name {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .team-name {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .lap-time {
+            font-size: 14px;
+            text-align: right;
+        }
+
+        .gap {
+            font-size: 12px;
+            opacity: 0.8;
+            text-align: right;
+        }
+
+        /* Telemetry */
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .telemetry-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #FF1E00;
+        }
+
+        .telemetry-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            opacity: 0.7;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        .telemetry-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00D2BE;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s;
+            border-radius: 4px;
+        }
+
+        /* Stats */
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-label {
+            opacity: 0.7;
+            font-size: 13px;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #00D2BE;
+        }
+
+        /* Weather/Safety Car */
+        .status-banner {
+            background: rgba(255, 200, 0, 0.2);
+            border: 2px solid #FFC800;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 30, 0, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 30, 0, 0.7);
+        }
+
+        /* Connection status */
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .connected {
+            background: #00D2BE;
+            color: white;
+        }
+
+        .disconnected {
+            background: #FF1E00;
+            color: white;
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status disconnected" id="connectionStatus">
+        ⚫ Disconnected
+    </div>
+
+    <div class="header">
+        <h1>🏎️ F1 SIMULATOR</h1>
+        <p>Production-Ready Formula 1 Racing Simulation</p>
+    </div>
+
+    <div class="container">
+        <div class="grid">
+            <!-- Left: Controls -->
+            <div>
+                <div class="card">
+                    <div class="card-title">🏁 Race Controls</div>
+                    <div class="controls">
+                        <div class="control-group">
+                            <label>Track</label>
+                            <select id="trackSelect">
+                                <option value="monaco">Monaco</option>
+                                <option value="silverstone">Silverstone</option>
+                                <option value="spa">Spa-Francorchamps</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label>Drivers</label>
+                            <input type="range" id="driversSlider" min="2" max="20" value="20">
+                            <div class="slider-value" id="driversValue">20</div>
+                        </div>
+
+                        <div class="control-group">
+                            <label>Laps</label>
+                            <input type="range" id="lapsSlider" min="1" max="20" value="5">
+                            <div class="slider-value" id="lapsValue">5</div>
+                        </div>
+
+                        <div class="control-group">
+                            <label>Initial Weather</label>
+                            <select id="weatherSelect">
+                                <option value="sunny">☀️ Sunny</option>
+                                <option value="cloudy">☁️ Cloudy</option>
+                                <option value="light_rain">🌦️ Light Rain</option>
+                                <option value="rain">🌧️ Rain</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label>
+                                <input type="checkbox" id="enableWeather" checked> Dynamic Weather
+                            </label>
+                        </div>
+
+                        <div class="control-group">
+                            <label>
+                                <input type="checkbox" id="enableSafetyCar" checked> Safety Car
+                            </label>
+                        </div>
+
+                        <button class="btn btn-primary" id="createBtn" onclick="createRace()">
+                            🏗️ Create Race
+                        </button>
+
+                        <button class="btn btn-primary" id="startBtn" onclick="startRace()" disabled>
+                            ▶️ Start
+                        </button>
+
+                        <button class="btn btn-danger" id="stopBtn" onclick="stopRace()" disabled>
+                            ⏸️ Stop
+                        </button>
+
+                        <button class="btn btn-danger" id="resetBtn" onclick="resetRace()">
+                            🔄 Reset
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-title">📊 Race Stats</div>
+                    <div id="statsContainer">
+                        <div class="stat-row">
+                            <span class="stat-label">Track</span>
+                            <span class="stat-value" id="statTrack">-</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Simulation Time</span>
+                            <span class="stat-value" id="statTime">0.0s</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Steps</span>
+                            <span class="stat-value" id="statSteps">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Active Drivers</span>
+                            <span class="stat-value" id="statActive">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center: Track Visualization -->
+            <div>
+                <div class="card">
+                    <div id="statusBanners"></div>
+                    <canvas id="trackCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Right: Timing & Telemetry -->
+            <div>
+                <div class="card">
+                    <div class="card-title">⏱️ Live Timing</div>
+                    <div class="timing-tower" id="timingTower">
+                        <p style="text-align: center; opacity: 0.5;">No race data</p>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-title">📡 Leader Telemetry</div>
+                    <div class="telemetry-grid" id="telemetryGrid">
+                        <div class="telemetry-item">
+                            <div class="telemetry-label">Speed</div>
+                            <div class="telemetry-value" id="telSpeed">0</div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div class="telemetry-label">Lap</div>
+                            <div class="telemetry-value" id="telLap">0</div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div class="telemetry-label">Tire Wear</div>
+                            <div class="telemetry-value" id="telTireWear">0%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="telTireProgress" style="width: 0%; background: #FF1E00;"></div>
+                            </div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div class="telemetry-label">Tire</div>
+                            <div class="telemetry-value" id="telTire">-</div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div class="telemetry-label">Fuel</div>
+                            <div class="telemetry-value" id="telFuel">0kg</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="telFuelProgress" style="width: 0%; background: #00D2BE;"></div>
+                            </div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div class="telemetry-label">ERS</div>
+                            <div class="telemetry-value" id="telERS">0%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="telERSProgress" style="width: 0%; background: #00FF00;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection
+        let ws = null;
+        let currentState = null;
+
+        // Canvas
+        const canvas = document.getElementById('trackCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth - 40;
+            canvas.height = 600;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Connect to WebSocket
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                console.log('Connected to F1 Simulator');
+                document.getElementById('connectionStatus').className = 'connection-status connected';
+                document.getElementById('connectionStatus').textContent = '🟢 Connected';
+            };
+
+            ws.onmessage = (event) => {
+                currentState = JSON.parse(event.data);
+                updateUI(currentState);
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected from F1 Simulator');
+                document.getElementById('connectionStatus').className = 'connection-status disconnected';
+                document.getElementById('connectionStatus').textContent = '⚫ Disconnected';
+                setTimeout(connectWebSocket, 2000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        // Update UI with state
+        function updateUI(state) {
+            if (!state || state.status === 'not_initialized') return;
+
+            // Update stats
+            if (state.track) {
+                document.getElementById('statTrack').textContent = state.track.name;
+            }
+            document.getElementById('statTime').textContent = state.simulation_time?.toFixed(1) + 's';
+            document.getElementById('statSteps').textContent = state.current_step;
+            document.getElementById('statActive').textContent = state.agents?.length || 0;
+
+            // Update status banners
+            updateStatusBanners(state);
+
+            // Update timing tower
+            updateTimingTower(state.leaderboard || []);
+
+            // Update telemetry (leader)
+            if (state.agents && state.agents.length > 0) {
+                const leader = state.agents[0];
+                updateTelemetry(leader);
+            }
+
+            // Draw track
+            drawTrack(state);
+
+            // Update button states
+            if (state.status === 'complete') {
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = true;
+            }
+        }
+
+        // Update status banners
+        function updateStatusBanners(state) {
+            const container = document.getElementById('statusBanners');
+            container.innerHTML = '';
+
+            // Safety car
+            if (state.safety_car && state.safety_car.is_active) {
+                const banner = document.createElement('div');
+                banner.className = 'status-banner';
+                banner.textContent = state.safety_car.message;
+                container.appendChild(banner);
+            }
+
+            // Weather
+            if (state.weather) {
+                const condition = state.weather.condition;
+                if (condition !== 'sunny') {
+                    const banner = document.createElement('div');
+                    banner.className = 'status-banner';
+                    banner.style.background = 'rgba(0, 200, 255, 0.2)';
+                    banner.style.borderColor = '#00C8FF';
+                    banner.textContent = `Weather: ${condition.replace('_', ' ').toUpperCase()}`;
+                    container.appendChild(banner);
+                }
+            }
+        }
+
+        // Update timing tower
+        function updateTimingTower(leaderboard) {
+            const container = document.getElementById('timingTower');
+            if (!leaderboard || leaderboard.length === 0) return;
+
+            container.innerHTML = '';
+
+            leaderboard.forEach(entry => {
+                const row = document.createElement('div');
+                row.className = 'timing-row';
+                row.style.borderLeftColor = getRandomColor();
+
+                const gap = entry.position === 1 ? 'Leader' : `+${entry.gap_to_leader.toFixed(1)}s`;
+
+                row.innerHTML = `
+                    <div class="position">${entry.position}</div>
+                    <div class="driver-info">
+                        <div class="driver-name">${entry.driver_name}</div>
+                        <div class="team-name">${entry.team_name}</div>
+                    </div>
+                    <div class="lap-time">${entry.total_time.toFixed(1)}s</div>
+                    <div class="gap">${gap}</div>
+                `;
+
+                container.appendChild(row);
+            });
+        }
+
+        // Update telemetry
+        function updateTelemetry(agent) {
+            document.getElementById('telSpeed').textContent = Math.round(agent.speed_kmh || 0);
+            document.getElementById('telLap').textContent = `${agent.lap}/${agent.sector || 1}`;
+
+            if (agent.tire) {
+                document.getElementById('telTireWear').textContent = agent.tire.wear_percentage.toFixed(0) + '%';
+                document.getElementById('telTireProgress').style.width = agent.tire.wear_percentage + '%';
+                document.getElementById('telTire').textContent = agent.tire.compound_name;
+            }
+
+            document.getElementById('telFuel').textContent = agent.fuel_kg?.toFixed(0) + 'kg';
+            const fuelPercent = (agent.fuel_kg / 110) * 100;
+            document.getElementById('telFuelProgress').style.width = fuelPercent + '%';
+
+            document.getElementById('telERS').textContent = agent.ers_percentage?.toFixed(0) + '%';
+            document.getElementById('telERSProgress').style.width = agent.ers_percentage + '%';
+        }
+
+        // Draw track
+        function drawTrack(state) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (!state.track || !state.agents) return;
+
+            const track = state.track;
+
+            // Draw track layout
+            if (track.has_geojson && track.geojson && track.geojson.points) {
+                drawTrackFromGeoJSON(track.geojson);
+            } else {
+                // Draw simple circular track
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = Math.min(canvas.width, canvas.height) / 2 - 50;
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 20;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Draw cars
+            state.agents.forEach((agent, index) => {
+                if (agent.x && agent.y) {
+                    // Use GeoJSON position
+                    const x = (agent.x / 1000) * canvas.width;
+                    const y = (agent.y / 1000) * canvas.height;
+
+                    drawCar(x, y, agent.team_color || '#FF0000', agent.drs_active);
+                } else {
+                    // Fallback to circular layout
+                    const angle = (agent.position_m / track.length) * Math.PI * 2;
+                    const centerX = canvas.width / 2;
+                    const centerY = canvas.height / 2;
+                    const radius = Math.min(canvas.width, canvas.height) / 2 - 50;
+
+                    const x = centerX + radius * Math.cos(angle - Math.PI / 2);
+                    const y = centerY + radius * Math.sin(angle - Math.PI / 2);
+
+                    drawCar(x, y, agent.team_color || '#FF0000', agent.drs_active);
+                }
+            });
+        }
+
+        // Draw track from GeoJSON
+        function drawTrackFromGeoJSON(geojson) {
+            const points = geojson.points;
+            if (!points || points.length < 2) return;
+
+            // Draw track line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 15;
+            ctx.beginPath();
+
+            points.forEach((point, i) => {
+                const x = (point.x / 1000) * canvas.width;
+                const y = (point.y / 1000) * canvas.height;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+
+            ctx.closePath();
+            ctx.stroke();
+
+            // Draw DRS zones
+            if (geojson.zones) {
+                geojson.zones.forEach(zone => {
+                    if (zone.type === 'drs_activation') {
+                        ctx.strokeStyle = 'rgba(0, 255, 0, 0.4)';
+                        ctx.lineWidth = 20;
+                        // Draw zone (simplified)
+                    }
+                });
+            }
+        }
+
+        // Draw car
+        function drawCar(x, y, color, drsActive) {
+            // Car body
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // White outline
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // DRS indicator
+            if (drsActive) {
+                ctx.fillStyle = '#00FF00';
+                ctx.beginPath();
+                ctx.arc(x, y, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 0.3;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // Random color generator
+        function getRandomColor() {
+            const colors = ['#1E41FF', '#DC0000', '#00D2BE', '#FF8700', '#006F62', '#0090FF'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // API Calls
+        async function createRace() {
+            const config = {
+                track: document.getElementById('trackSelect').value,
+                num_drivers: parseInt(document.getElementById('driversSlider').value),
+                num_laps: parseInt(document.getElementById('lapsSlider').value),
+                initial_weather: document.getElementById('weatherSelect').value,
+                enable_weather: document.getElementById('enableWeather').checked,
+                enable_safety_car: document.getElementById('enableSafetyCar').checked
+            };
+
+            const response = await fetch('/api/simulation/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+
+            const result = await response.json();
+            if (result.status === 'success') {
+                document.getElementById('createBtn').disabled = true;
+                document.getElementById('startBtn').disabled = false;
+                console.log('Race created successfully');
+            }
+        }
+
+        async function startRace() {
+            const response = await fetch('/api/simulation/start', { method: 'POST' });
+            const result = await response.json();
+            if (result.status === 'success') {
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+            }
+        }
+
+        async function stopRace() {
+            const response = await fetch('/api/simulation/stop', { method: 'POST' });
+            const result = await response.json();
+            if (result.status === 'success') {
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+            }
+        }
+
+        async function resetRace() {
+            const response = await fetch('/api/simulation/reset', { method: 'POST' });
+            const result = await response.json();
+            if (result.status === 'success') {
+                document.getElementById('createBtn').disabled = false;
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = true;
+                currentState = null;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('timingTower').innerHTML = '<p style="text-align: center; opacity: 0.5;">No race data</p>';
+            }
+        }
+
+        // Update slider values
+        document.getElementById('driversSlider').oninput = function() {
+            document.getElementById('driversValue').textContent = this.value;
+        };
+        document.getElementById('lapsSlider').oninput = function() {
+            document.getElementById('lapsValue').textContent = this.value;
+        };
+
+        // Initialize
+        connectWebSocket();
+    </script>
+</body>
+</html>
